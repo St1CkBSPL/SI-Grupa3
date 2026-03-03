@@ -1,0 +1,140 @@
+Wstęp: Przygotowanie danych (Wczytanie systemu)
+Zanim przeszliśmy do właściwych punktów, skrypt musiał załadować bazę diabetes.txt.
+
+Krok 1: Skrypt otwiera plik i czyta go linijka po linijce.
+
+Krok 2: Każdy wiersz jest dzielony na pojedyncze elementy (rozdzielone spacją/tabulatorem).
+
+Krok 3: Wszystkie kolumny z wyjątkiem ostatniej są traktowane jako atrybuty numeryczne (zmienne warunkujące) i konwertowane na liczby dziesiętne.
+
+Krok 4: Ostatnia kolumna w każdym wierszu jest zapisywana jako klasa decyzyjna (symboliczna).
+
+ZADANIE 3: Analiza systemu decyzyjnego
+Podpunkt 3a
+
+Treść zadania: Wypisujemy istniejące w systemie symbole klas decyzyjnych.
+
+Wyjaśnienie krok po kroku: 1. Pobrano pełną listę wszystkich klas decyzyjnych (ostatnich kolumn) z każdego wiersza.
+2. Przekonwertowano tę listę na matematyczną strukturę zbioru (ang. set). Zbiór w Pythonie ma właściwość automatycznego odrzucania duplikatów.
+3. Zwrócono zbiór unikalnych wartości, co daje nam dokładną listę dostępnych symboli klas.
+
+Podpunkt 3b
+
+Treść zadania: Wielkości klas decyzyjnych (liczby obiektów w klasach).
+
+Wyjaśnienie krok po kroku:
+
+Użyto narzędzia Counter z wbudowanej biblioteki Pythona.
+
+Moduł ten iteruje (przechodzi) przez całą listę zebranych klas decyzyjnych.
+
+Za każdym razem, gdy napotyka dany symbol, zwiększa jego licznik o 1. Wynikiem jest słownik mapujący nazwę klasy na liczbę jej wystąpień.
+
+Podpunkt 3c
+
+Treść zadania: Minimalne i maksymalne wartości poszczególnych atrybutów (dotyczy atrybutów numerycznych).
+
+Wyjaśnienie krok po kroku:
+
+Utworzono pętlę, która przechodzi kolumna po kolumnie.
+
+Dla danej kolumny wyodrębniono wszystkie jej wartości do osobnej tymczasowej listy.
+
+Na tej liście wywołano standardowe funkcje min() oraz max(), które skanują zbiór i zwracają odpowiednio najmniejszą i największą znalezioną liczbę.
+
+Podpunkt 3d
+
+Treść zadania: Dla każdego atrybutu wypisujemy liczbę różnych dostępnych wartości.
+
+Wyjaśnienie krok po kroku:
+
+Pobrano wszystkie wartości dla konkretnej kolumny.
+
+Przekonwertowano listę na zbiór (set), aby usunąć powtarzające się liczby.
+
+Zmierzono długość tego zbioru za pomocą funkcji len(), co daje nam ostateczną liczbę unikalnych wartości.
+
+Podpunkt 3e
+
+Treść zadania: Dla każdego atrybutu wypisujemy listę wszystkich różnych dostępnych wartości.
+
+Wyjaśnienie krok po kroku:
+
+Ponownie wyodrębniono unikalne wartości dla danej kolumny przy użyciu zbioru (set).
+
+Przekonwertowano zbiór z powrotem na standardową listę.
+
+Użyto funkcji sorted(), aby uporządkować wartości rosnąco dla lepszej czytelności.
+
+Wypisano wynik na ekran.
+
+Podpunkt 3f
+
+Treść zadania: Odchylenie standardowe dla poszczególnych atrybutów w całym systemie i w klasach decyzyjnych.
+
+Wyjaśnienie krok po kroku:
+
+Wyciągnięto wszystkie wartości z konkretnego atrybutu (kolumny).
+
+Przekazano te wartości do funkcji stdev z modułu statystycznego, aby policzyć odchylenie dla całości danych.
+
+Następnie dla każdej unikalnej klasy decyzyjnej stworzono przefiltrowaną listę (zawierającą tylko te wartości atrybutu, których klasa w danym wierszu zgadzała się z szukaną).
+
+Obliczono odchylenie standardowe dla tych wyizolowanych, mniejszych grup danych.
+
+ZADANIE 4: Preprocessing (przetwarzanie wstępne)
+Podpunkt 4a
+
+Treść zadania: Wygeneruj 10 procent wartości nieznanych, wpisując na miejsce danych znak zapytania i napraw metodą szukania najczęściej występującej wartości, lub wartością średnią (dla atrybutów numerycznych).
+
+Wyjaśnienie krok po kroku:
+
+Obliczono całkowitą liczbę komórek z danymi numerycznymi (liczba wierszy pomnożona przez liczbę kolumn).
+
+Wyliczono, ile wynosi 10% z tej puli.
+
+Wylosowano unikalne współrzędne (numer wiersza i numer kolumny) w ilości odpowiadającej wyliczonym 10%, a następnie w te miejsca wstawiono znak ?.
+
+Aby naprawić dane, skrypt przeanalizował każdą kolumnę: zsumował istniejące w niej liczby (omijając znaki zapytania) i obliczył z nich średnią arytmetyczną.
+
+Każdy znak ? w danej kolumnie został zamieniony na wyliczoną przed chwilą średnią.
+
+Podpunkt 4b
+
+Treść zadania: Znormalizuj atrybuty numeryczne wybranego systemu na przedziały: <-1, 1>, <0, 1>, <-10, 10>.
+
+Wyjaśnienie krok po kroku:
+
+Skrypt odczytuje minimum i maksimum dla oryginalnej kolumny.
+
+Dla każdego nowego przedziału (gdzie a to nowe minimum, a b to nowe maksimum) modyfikuje każdą komórkę według wzoru na normalizację Min-Max.
+
+Od aktualnej wartości odejmowane jest stare minimum. Wynik mnoży się przez rozpiętość nowego przedziału i dzieli przez rozpiętość starego, a na koniec dodaje nowe minimum. Przesuwa to i skaluje wszystkie dane do idealnie wyznaczonych widełek.
+
+Podpunkt 4c
+
+Treść zadania: Dokonaj standaryzacji wartości numerycznych wybranego systemu decyzyjnego.
+
+Wyjaśnienie krok po kroku:
+
+Dla każdej kolumny wyliczono jej średnią oraz odchylenie standardowe populacji (obliczane z sumy kwadratów różnic między daną wartością a średnią, dzielone przez liczbę obiektów).
+
+Każda wartość w kolumnie została zaktualizowana: odjęto od niej średnią, a wynik podzielono przez odchylenie standardowe.
+
+Proces ten (tzw. Z-score) sprawia, że dane zostają "wycentrowane" na zerze (nowa średnia wynosi 0), a ich odchylenie (wariancja) jest sprowadzone dokładnie do wartości 1.
+
+Podpunkt 4d
+
+Treść zadania: Przeformatuj dane z pliku Churn_Modelling.csv do postaci, która da się wczytać, następnie zamień atrybut symboliczny Geography na Dummy variables i skasuj jeden z trzech nowych atrybutów aby uniknąć wpadnięcia w pułapkę Dummy Variables.
+
+Wyjaśnienie krok po kroku:
+
+Za pomocą wbudowanego modułu do obsługi plików CSV załadowano dane i zlokalizowano indeks kolumny o nazwie Geography.
+
+Wyciągnięto wszystkie unikalne wartości tekstowe z tej kolumny (np. nazwy państw).
+
+Jedną z tych wartości (pierwszą alfabetycznie) odrzucono. Jest to niezbędne w statystyce i uczeniu maszynowym, aby uniknąć tzw. współliniowości (jeśli obiekt nie należy do żadnej z pozostałych klas, matematycznie wiadomo, że musi należeć do odrzuconej).
+
+Dla pozostałych nazw państw stworzono nowe nagłówki kolumn.
+
+Oryginalna kolumna z tekstem została usunięta, a na jej miejsce wprowadzono nowe kolumny zer i jedynek. Skrypt wpisuje 1 pod odpowiednim państwem, jeśli wartość oryginalna się zgadzała, i 0 we wszystkich pozostałych.
