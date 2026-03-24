@@ -41,7 +41,7 @@ def task1_vacuum_bfs():
             print(f"      -> Znaleziona sekwencja akcji: {path}")
 
             print(
-                "\n   -> Wyjaśnienie: Algorytm BFS na każdym kroku wyciąga z kolejki stan i generuje wszystkie możliwe w nim akcje. Dzięki wydrukom kroków widać, jak algorytm sprawdza najpierw stany oddalone o 0 akcji, potem o 1 akcję itd.\n")
+                "\n   -> Wyjaśnienie: Zastosowano algorytm BFS (przeszukiwanie wszerz). Algorytm ten analizuje wszystkie możliwe ruchy poziom po poziomie (najpierw wszystkie kombinacje 1 ruchu, potem 2 ruchów itd.). Gwarantuje to znalezienie najkrótszej możliwej sekwencji akcji, która doprowadzi do posprzątania obu pokoi.\n")
             return path
 
         # Generowanie akcji
@@ -176,7 +176,7 @@ def task2_a_star_search():
 
 
 # ==========================================
-# ZADANIE 3: Trywialna gra (Minimax z Alpha-Beta)
+# ZADANIE 3: Trywialna gra (Minimax z Alpha-Beta) w oparciu o Wykład 4
 # ==========================================
 game_tree = {
     'A': ['B', 'C', 'D'],
@@ -193,7 +193,8 @@ def alpha_beta_pruning(node, alpha, beta, is_maximizing, depth=0):
         print(f"{indent}[Liść] Analizowana wypłata: {node}")
         return node, []
 
-    print(f"{indent}[Węzeł {node}] Gracz {'MAX' if is_maximizing else 'MIN'} ocenia możliwości...")
+    print(
+        f"{indent}[Węzeł {node}] Gracz {'MAX' if is_maximizing else 'MIN'} szuka najlepszej opcji. Aktualne widełki: [Alfa: {alpha}, Beta: {beta}]")
 
     if is_maximizing:
         max_eval = -float('inf')
@@ -201,17 +202,21 @@ def alpha_beta_pruning(node, alpha, beta, is_maximizing, depth=0):
 
         for child in game_tree[node]:
             eval_val, path = alpha_beta_pruning(child, alpha, beta, False, depth + 1)
+
             if eval_val > max_eval:
                 max_eval = eval_val
                 best_path = [child] + path
 
             alpha = max(alpha, eval_val)
+            print(f"{indent}   Po ocenie gałęzi {child}, Alfa dla węzła {node} wynosi teraz: {alpha}")
+
+            # Warunek odcięcia (Pruning)
             if beta <= alpha:
                 print(
-                    f"{indent}--> [ODCIĘCIE ALFA-BETA] Odcięto pozostałe gałęzie po sprawdzeniu {child}! (Beta: {beta} <= Alfa: {alpha})")
+                    f"{indent}--> [ODCIĘCIE ALFA-BETA] Węzeł {node} odcina pozostałe gałęzie! (Beta: {beta} <= Alfa: {alpha})")
                 break
 
-        print(f"{indent}Węzeł {node} otrzymuje wartość: {max_eval}")
+        print(f"{indent}Węzeł {node} zwraca ostateczną wartość: {max_eval}")
         return max_eval, best_path
 
     else:
@@ -220,38 +225,43 @@ def alpha_beta_pruning(node, alpha, beta, is_maximizing, depth=0):
 
         for child in game_tree[node]:
             eval_val, path = alpha_beta_pruning(child, alpha, beta, True, depth + 1)
+
             if eval_val < min_eval:
                 min_eval = eval_val
                 best_path = [child] + path
 
             beta = min(beta, eval_val)
+            print(f"{indent}   Po ocenie gałęzi {child}, Beta dla węzła {node} wynosi teraz: {beta}")
+
+            # Warunek odcięcia (Pruning)
             if beta <= alpha:
                 print(
-                    f"{indent}--> [ODCIĘCIE ALFA-BETA] Odcięto pozostałe gałęzie po sprawdzeniu {child}! (Beta: {beta} <= Alfa: {alpha})")
+                    f"{indent}--> [ODCIĘCIE ALFA-BETA] Węzeł {node} odcina pozostałe gałęzie! (Beta: {beta} <= Alfa: {alpha})")
                 break
 
-        print(f"{indent}Węzeł {node} otrzymuje wartość: {min_eval}")
+        print(f"{indent}Węzeł {node} zwraca ostateczną wartość: {min_eval}")
         return min_eval, best_path
 
 
 def task3_minimax():
-    print("--- ZADANIE 3: Trywialna gra (Minimax + Alpha-Beta Pruning) ---")
+    print("--- ZADANIE 3: Trywialna gra (Minimax + Alpha-Beta Pruning) z Wykładu 4 ---")
 
-    print("   [PRZED] Struktura drzewa:")
-    print(f"      Węzeł startowy A -> Gałęzie: {game_tree['A']}")
-    print(f"      Gałąź B prowadzi do liści: {game_tree['B']}")
-    print(f"      Gałąź C prowadzi do liści: {game_tree['C']}")
-    print(f"      Gałąź D prowadzi do liści: {game_tree['D']}\n")
+    print("   [PRZED] Struktura drzewa gry o stałej sumie:")
+    print(f"      Węzeł startowy A (MAX) -> Opcje: {game_tree['A']}")
+    print(f"      Z węzła B (MIN) -> Prowadzi do wypłat: {game_tree['B']}")
+    print(f"      Z węzła C (MIN) -> Prowadzi do wypłat: {game_tree['C']}")
+    print(f"      Z węzła D (MIN) -> Prowadzi do wypłat: {game_tree['D']}\n")
 
-    print("   [ANALIZA DRZEWA - KROKI]:")
+    print("   [ANALIZA DRZEWA - KROKI ZGODNE Z WYKŁADEM 4]:")
+    # Zgodnie z wykładem 4, na początku zakres (Alfa, Beta) to [-inf, +inf]
     optimal_value, optimal_path = alpha_beta_pruning('A', -float('inf'), float('inf'), True)
 
-    print(f"\n   [PO] Zakończenie analizy:")
-    print(f"      -> Wynik optymalny dla gracza MAX: {optimal_value}")
-    print(f"      -> Optymalna strategia (wybór ścieżki): A -> {optimal_path[0]}")
+    print(f"\n   [PO] Zakończenie analizy algorytmu:")
+    print(f"      -> Oczekiwana wartość węzła korzenia (MINIMAX(A)): {optimal_value}")
+    print(f"      -> Optymalna strategia dla gracza MAX to wybór ścieżki: A -> {optimal_path[0]}")
 
     print(
-        "\n   -> Wyjaśnienie: Z logów analizy drzewa widać, w jakiej kolejności algorytm odwiedza węzły. Kiedy gracz MIN (węzły B, C, D) wybiera minimalną wartość, zapisuje tę informację jako parametr Beta. Gracz MAX przekazuje te obostrzenia w dół, a kiedy okazuje się, że jakaś nowa ścieżka już teraz jest gorsza od tego co zagwarantował sobie wcześniej MAX (Alfa), algorytm natychmiast ją odcina (Pruning), co wyraźnie widać w wypisanych krokach.")
+        "\n   -> Wyjaśnienie: Implementacja wiernie odtwarza mechanikę z Wykładu 4. Zwróć uwagę na logi przy węźle C: po odczytaniu pierwszej wartości równej 2, gracz MIN aktualizuje swoją Betę do 2. Ponieważ ta Beta (2) jest mniejsza niż zagwarantowana już wcześniej przez gracza MAX Alfa (3 z węzła B), algorytm natychmiast odcina sprawdzanie kolejnych liści z węzła C (4 i 6). Gracz MAX wie, że ścieżka C jest dla niego nieopłacalna, nie musi więc tracić czasu na badanie jej w całości.")
 
 
 # ==========================================
@@ -259,5 +269,7 @@ def task3_minimax():
 # ==========================================
 if __name__ == "__main__":
     task1_vacuum_bfs()
+    print("\n" + "=" * 50 + "\n")
     task2_a_star_search()
+    print("\n" + "=" * 50 + "\n")
     task3_minimax()
