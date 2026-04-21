@@ -1,0 +1,96 @@
+def count_legal_values(var, assignment, domains, constraints):
+    # Inicjujemy licznik dopuszczalnych wartości dla sprawdzanej zmiennej
+    legal_count = 0
+    for value in domains[var]:
+        conflict = False
+        # Weryfikujemy każdego sąsiada w grafie ograniczeń
+        for neighbor in constraints[var]:
+            # Jeśli sąsiad ma już tę samą przypisaną wartość, zgłaszamy konflikt
+            if neighbor in assignment and assignment[neighbor] == value:
+                conflict = True
+                break
+        # Jeśli dana wartość nie łamie więzów (brak konfliktu), zwiększamy pulę legalnych opcji
+        if not conflict:
+            legal_count += 1
+    return legal_count
+
+def mrv(variables, domains, assignment, constraints):
+    # Wyodrębniamy zmienne, które wciąż czekają na przypisanie
+    unassigned = [v for v in variables if v not in assignment]
+    
+    # Wybieramy tę zmienną, która ma najmniej legalnych opcji (Minimum Remaining Values).
+    # Funkcja count_legal_values działa tu jako dynamiczne sprawdzanie w przód (Forward Checking).
+    chosen_var = min(unassigned, key=lambda v: count_legal_values(v, assignment, domains, constraints))
+    print(f"  [MRV] Algorytm wybrał zmienną {chosen_var}, ponieważ została jej najmniejsza liczba dopuszczalnych wartości.")
+    return chosen_var
+
+def is_consistent(var, value, assignment, constraints):
+    # Sprawdzamy, czy przypisywana wartość nie została już zajęta przez połączonego sąsiada
+    for neighbor in constraints[var]:
+        if neighbor in assignment and assignment[neighbor] == value:
+            print(f"  [BŁĄD] Konflikt! Sąsiad {neighbor} ma już przypisaną wartość '{value}'.")
+            return False
+    return True
+
+def backtrack(assignment, variables, domains, constraints, step=None):
+    # Inicjalizacja licznika kroków dla czytelności logów
+    if step is None:
+        step = [1]
+        
+    print(f"\n--- KROK {step[0]} ---")
+    print(f"Aktualny stan przypisań: {assignment}")
+    step[0] += 1
+
+    # Warunek stopu: wszystkie zmienne otrzymały poprawne wartości
+    if len(assignment) == len(variables):
+        print("  -> SUKCES! Znaleziono pełne i spójne rozwiązanie.")
+        return assignment
+    
+    # Krok 1.2 z zadania: wymuszamy wybór X2 na samym początku przeszukiwania
+    if not assignment:
+        var = 'X2'
+        print(f"  [START] Zgodnie z wytycznymi z zadania, zaczynamy od zmiennej {var}.")
+    else:
+        # Dla kolejnych kroków uruchamiamy heurystykę MRV
+        var = mrv(variables, domains, assignment, constraints)
+
+    # Iterujemy po dostępnej domenie wybranej zmiennej
+    for value in domains[var]:
+        print(f"  -> Próba przypisania: {var} = '{value}'")
+        
+        # Jeśli wartość jest lokalnie spójna z resztą grafu
+        if is_consistent(var, value, assignment, constraints):
+            print(f"  [OK] Wartość '{value}' dla {var} jest dopuszczalna.")
+            assignment[var] = value
+            
+            # Rekurencyjnie zagłębiamy się w drzewo przeszukiwania
+            result = backtrack(assignment, variables, domains, constraints, step)
+            
+            # Jeśli wywołanie rekurencyjne zwróciło wynik, propagujemy go w górę
+            if result:
+                return result
+            
+            # Ślepy zaułek – cofamy przypisanie (mechanizm backtracking) i próbujemy innej wartości
+            print(f"  [COFANIE] Droga z {var}='{value}' okazała się ślepym zaułkiem. Następuje wycofanie.")
+            del assignment[var]
+            
+    # Brak rozwiązania w tej konkretnej gałęzi poszukiwań
+    print(f"  [PORAŻKA] Wyczerpano wszystkie bezpieczne opcje dla zmiennej {var}.")
+    return None
+
+# Definicja problemu: zmienne, dziedziny oraz ograniczenia (krawędzie grafu z zadania 1.1)
+variables = ['X1', 'X2', 'X3']
+domains = {
+    'X1': ['R', 'B', 'G'],
+    'X2': ['R'],
+    'X3': ['G']
+}
+constraints = {
+    'X1': ['X2', 'X3'],
+    'X2': ['X1', 'X3'],
+    'X3': ['X1', 'X2']
+}
+
+print("=== START ALGORYTMU CSP ===")
+solution = backtrack({}, variables, domains, constraints)
+print("\nOSTATECZNY WYNIK:", solution)
