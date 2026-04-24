@@ -1,352 +1,531 @@
-## Zadanie 1
+from itertools import combinations
+import copy
+import pygame
 
-def count_legal_values(var, assignment, domains, constraints):
-    # Inicjujemy licznik dopuszczalnych wartości dla sprawdzanej zmiennej
-    legal_count = 0
+# ==================================================================================
+# ZADANIE 1: CSP (Constraint Satisfaction Problem)
+# ==================================================================================
+
+import copy
+import pygame
+
+
+# --- LOGIKA ZADANIA 1 ---
+def get_legal_values(var, assignment, domains, constraints):
+    """Zwraca listę wartości z dziedziny, które nie kolidują z przypisanymi sąsiadami."""
+    legal_values = []
     for value in domains[var]:
         conflict = False
-        # Weryfikujemy każdego sąsiada w grafie ograniczeń
         for neighbor in constraints[var]:
-            # Jeśli sąsiad ma już tę samą przypisaną wartość, zgłaszamy konflikt
             if neighbor in assignment and assignment[neighbor] == value:
                 conflict = True
                 break
-        # Jeśli dana wartość nie łamie więzów (brak konfliktu), zwiększamy pulę legalnych opcji
         if not conflict:
-            legal_count += 1
-    return legal_count
+            legal_values.append(value)
+    return legal_values
 
 
-def mrv(variables, domains, assignment, constraints):
-    # Wyodrębniamy zmienne, które wciąż czekają na przypisanie
-    unassigned = [v for v in variables if v not in assignment]
+def solve_csp_logic():
+    variables = ['X1', 'X2', 'X3']
+    domains = {'X1': ['R', 'B', 'G'], 'X2': ['R'], 'X3': ['G']}
+    constraints = {'X1': ['X2', 'X3'], 'X2': ['X1', 'X3'], 'X3': ['X1', 'X2']}
+    steps = []
 
-    # Wybieramy tę zmienną, która ma najmniej legalnych opcji (Minimum Remaining Values).
-    # Funkcja count_legal_values działa tu jako dynamiczne sprawdzanie w przód (Forward Checking).
-    chosen_var = min(unassigned, key=lambda v: count_legal_values(v, assignment, domains, constraints))
-    print(
-        f"  [MRV] Algorytm wybrał zmienną {chosen_var}, ponieważ została jej najmniejsza liczba dopuszczalnych wartości.")
-    return chosen_var
+    def backtrack(assignment):
+        # Zapisujemy kopię aktualnego stanu przypisań do historii kroków
+        steps.append(copy.deepcopy(assignment))
 
+        if len(assignment) == len(variables):
+            return assignment
 
-def is_consistent(var, value, assignment, constraints):
-    # Sprawdzamy, czy przypisywana wartość nie została już zajęta przez połączonego sąsiada
-    for neighbor in constraints[var]:
-        if neighbor in assignment and assignment[neighbor] == value:
-            print(f"  [BŁĄD] Konflikt! Sąsiad {neighbor} ma już przypisaną wartość '{value}'.")
-            return False
-    return True
+        # Wybór zmiennej: X2 wymuszone na początku, potem heurystyka MRV
+        if not assignment:
+            var = 'X2'
+        else:
+            unassigned = [v for v in variables if v not in assignment]
+            # Wybieramy zmienną z najmniejszą liczbą dopuszczalnych wartości (MRV)
+            var = min(unassigned, key=lambda v: len(get_legal_values(v, assignment, domains, constraints)))
 
+        for value in domains[var]:
+            # Sprawdzenie spójności (czy wartość nie koliduje z sąsiadami)
+            if all(n not in assignment or assignment[n] != value for n in constraints[var]):
+                assignment[var] = value
+                if backtrack(assignment):
+                    return assignment
+                del assignment[var]
+                steps.append(copy.deepcopy(assignment))
+        return None
 
-def backtrack(assignment, variables, domains, constraints, step=None):
-    # Inicjalizacja licznika kroków dla czytelności logów
-    if step is None:
-        step = [1]
-
-    print(f"\n--- KROK {step[0]} ---")
-    print(f"Aktualny stan przypisań: {assignment}")
-    step[0] += 1
-
-    # Warunek stopu: wszystkie zmienne otrzymały poprawne wartości
-    if len(assignment) == len(variables):
-        print("  -> SUKCES! Znaleziono pełne i spójne rozwiązanie.")
-        return assignment
-
-    # Krok 1.2 z zadania: wymuszamy wybór X2 na samym początku przeszukiwania
-    if not assignment:
-        var = 'X2'
-        print(f"  [START] Zgodnie z wytycznymi z zadania, zaczynamy od zmiennej {var}.")
-    else:
-        # Dla kolejnych kroków uruchamiamy heurystykę MRV
-        var = mrv(variables, domains, assignment, constraints)
-
-    # Iterujemy po dostępnej domenie wybranej zmiennej
-    for value in domains[var]:
-        print(f"  -> Próba przypisania: {var} = '{value}'")
-
-        # Jeśli wartość jest lokalnie spójna z resztą grafu
-        if is_consistent(var, value, assignment, constraints):
-            print(f"  [OK] Wartość '{value}' dla {var} jest dopuszczalna.")
-            assignment[var] = value
-
-            # Rekurencyjnie zagłębiamy się w drzewo przeszukiwania
-            result = backtrack(assignment, variables, domains, constraints, step)
-
-            # Jeśli wywołanie rekurencyjne zwróciło wynik, propagujemy go w górę
-            if result:
-                return result
-
-            # Ślepy zaułek – cofamy przypisanie (mechanizm backtracking) i próbujemy innej wartości
-            print(f"  [COFANIE] Droga z {var}='{value}' okazała się ślepym zaułkiem. Następuje wycofanie.")
-            del assignment[var]
-
-    # Brak rozwiązania w tej konkretnej gałęzi poszukiwań
-    print(f"  [PORAŻKA] Wyczerpano wszystkie bezpieczne opcje dla zmiennej {var}.")
-    return None
+    backtrack({})
+    # Zwracamy również domeny i więzy, by UI mogło je wykorzystać do analizy legalnych wartości
+    return steps, domains, constraints
 
 
-# Definicja problemu: zmienne, dziedziny oraz ograniczenia (krawędzie grafu z zadania 1.1)
-variables = ['X1', 'X2', 'X3']
-domains = {
-    'X1': ['R', 'B', 'G'],
-    'X2': ['R'],
-    'X3': ['G']
-}
-constraints = {
-    'X1': ['X2', 'X3'],
-    'X2': ['X1', 'X3'],
-    'X3': ['X1', 'X2']
-}
-
-print("=== START ALGORYTMU CSP ===")
-solution = backtrack({}, variables, domains, constraints)
-print("\nOSTATECZNY WYNIK:", solution)
-
-## Zadanie 2
-from itertools import combinations
-
-# Baza wiedzy - system decyzyjny (tabela z przykładami o1-o9)
-data = [
-    ("o1", "wysoka", "bliski", "średni", "tak"),
-    ("o2", "wysoka", "bliski", "średni", "tak"),
-    ("o3", "wysoka", "bliski", "średni", "tak"),
-    ("o4", "więcej niż średnia", "daleki", "silny", "nie pewne"),
-    ("o5", "więcej niż średnia", "daleki", "silny", "nie"),
-    ("o6", "więcej niż średnia", "daleki", "lekki", "nie"),
-    ("o7", "wysoka", "bliski", "średni", "tak"),
-    ("o8", "więcej niż średnia", "daleki", "lekki", "nie"),
-    ("o9", "więcej niż średnia", "daleki", "lekki", "tak")
-]
-
-# Nazwy naszych atrybutów warunkowych
-attributes = ["a1", "a2", "a3"]
-
-
-def is_rule_consistent(target_obj, attrs_indices):
-    # Pobieramy docelową klasę decyzyjną sprawdzanego obiektu (ostatni element w krotce)
-    target_dec = target_obj[-1]
-
-    # Przeszukujemy całą tabelę w poszukiwaniu ewentualnych sprzeczności
-    for row in data:
-        match = True
-        # Sprawdzamy, czy badany wiersz ma takie same wartości dla wytypowanych atrybutów
-        for i in attrs_indices:
-            if row[i] != target_obj[i]:
-                match = False
-                break
-
-        # Jeśli znaleźliśmy wiersz o takich samych cechach, ale INNEJ decyzji końcowej - reguła upada
-        if match and row[-1] != target_dec:
-            return False
-
-    # Jeśli pętla przeszła bez przeszkód, reguła jest niesprzeczna
-    return True
-
-
-def sequential_covering():
-    covered = set()  # Zbiór przechowujący identyfikatory obiektów już "wyjaśnionych" regułami
-    rules = []  # Lista na gotowe, niesprzeczne reguły
-
-    # 2.2 Zgodnie z teorią, szukamy reguł zaczynając od rzędu 1 aż do wyczerpania liczby atrybutów
-    for k in range(1, len(attributes) + 1):
-        print(f"\n======================================")
-        print(f"--- ETAP: Szukanie reguł rzędu {k} ---")
-        print(f"======================================")
-
-        # Generujemy wszystkie możliwe kombinacje atrybutów o długości k
-        attr_combinations = list(combinations(range(1, 4), k))
-
-        for obj in data:
-            # Obiekt, który został już opisany wcześniejszą regułą, nie może stanowić bazy dla nowej
-            if obj[0] in covered:
-                continue
-
-            rule_found = False
-            for comb in attr_combinations:
-                print(f"  Analiza {obj[0]} z cechami na indeksach {comb}...")
-
-                # Jeśli kombinacja atrybutów pozwala wyodrębnić jednoznaczną decyzję:
-                if is_rule_consistent(obj, comb):
-                    # Budujemy czytelny ciąg znaków opisujący warunek IF...
-                    rule_cond = " AND ".join([f"{attributes[i - 1]}='{obj[i]}'" for i in comb])
-                    formatted_rule = f"IF {rule_cond} THEN dec='{obj[-1]}'"
-
-                    covered_by_this = []
-
-                    # Szukamy, ile jeszcze innych obiektów "łapie się" na tę nową regułę
-                    for row in data:
-                        match = True
-                        for i in comb:
-                            if row[i] != obj[i]:
-                                match = False
-                                break
-                        # Dodajemy je do puli wyeliminowanych obiektów
-                        if match and row[-1] == obj[-1]:
-                            covered.add(row[0])
-                            covered_by_this.append(row[0])
-
-                    rules.append(f"{obj[0]}: {formatted_rule}")
-                    print(f"  [ZNALEZIONO!] -> {formatted_rule}")
-                    print(f"  [AKCJA] Wyrzucamy z dalszych rozważań obiekty: {', '.join(covered_by_this)}\n")
-
-                    rule_found = True
-                    # Skoro znaleźliśmy dobrą regułę dla tego obiektu, przerywamy sprawdzanie innych kombinacji
-                    break
-
-                    # Jeśli dla danej długości k nie udało się znaleźć reguły
-            if not rule_found:
-                print(f"  [BRAK] Obiekt {obj[0]} - nie znaleziono reguły niesprzecznej rzędu {k}.\n")
-
-        # Warunek wcześniejszego zatrzymania - jeśli wyeliminowaliśmy już całą tabelę, kończymy
-        if len(covered) == len(data):
-            print("\n*** SUKCES: Wszystkie obiekty w tabeli zostały z powodzeniem pokryte. ***")
-            break
-
-    return rules
-
-
-print("=== START ALGORYTMU POKRYWANIA SEKWENCYJNEGO ===")
-generated_rules = sequential_covering()
-
-print("\n=== PODSUMOWANIE WYGENEROWANYCH REGUŁ ===")
-for r in generated_rules:
-    print(r)
-
-# ==================================================================================
-# SEKCJA WIZUALIZACJI INTERAKTYWNEJ (PYGAME)
-# ==================================================================================
-import pygame
-import time
-
-
-def start_animated_visualization(csp_final, rules_final):
+# --- WIZUALIZACJA ZADANIA 1 ---
+def run_ui_zadanie_1(csp_data):
+    csp_steps, full_domains, constraints = csp_data
     pygame.init()
-    screen = pygame.display.set_mode((1100, 650))
-    pygame.display.set_caption("Animowana Wizualizacja Algorytmów SI")
+    screen = pygame.display.set_mode((1100, 750))
+    pygame.display.set_caption("ZADANIE 1 - Zaawansowana Wizualizacja CSP")
 
-    # Kolory i Fonty
-    COLORS = {'R': (255, 60, 60), 'G': (60, 255, 60), 'B': (60, 100, 255), 'BG': (30, 30, 30), 'TXT': (240, 240, 240)}
-    BTN_COLOR = (70, 130, 180)
-    BTN_HOVER = (100, 150, 200)
-    f_small = pygame.font.SysFont("Segoe UI", 18)
-    f_bold = pygame.font.SysFont("Segoe UI", 24, bold=True)
+    # Paleta kolorów
+    C = {
+        'BG': (25, 25, 25),
+        'TXT': (230, 230, 230),
+        'BTN': (60, 100, 150),
+        'R': (200, 50, 50),
+        'G': (50, 200, 50),
+        'B': (50, 50, 200),
+        'GRAY': (60, 60, 60),
+        'HL': (255, 255, 100)  # Highlight dla tekstu
+    }
 
-    # Współrzędne grafu CSP
-    nodes = {'X1': (250, 180), 'X2': (100, 450), 'X3': (400, 450)}
+    f_xs = pygame.font.SysFont("Arial", 14)
+    f_s = pygame.font.SysFont("Arial", 16)
+    f_b = pygame.font.SysFont("Arial", 22, bold=True)
 
-    # Definicja przycisku "Następny krok"
-    btn_rect = pygame.Rect(180, 550, 160, 45)
-
-    # Sekwencja animacji CSP (odtwarzamy kroki na podstawie logiki)
-    csp_steps = [
-        {},
-        {'X2': 'R'},
-        {'X2': 'R', 'X3': 'G'},
-        {'X2': 'R', 'X3': 'G', 'X1': 'B'}
-    ]
-
-    # Przygotowanie danych do animacji reguł
-    parsed_rules = []
-    for r in rules_final:
-        parts = r.split(": ")
-        obj_id = parts[0]
-        rule_content = parts[1]
-        parsed_rules.append({'id': obj_id, 'text': rule_content})
-
-    clock = pygame.time.Clock()
-    step_csp = 0
-    step_rules = 0
-    last_update = time.time()
-    mode = "CSP"
-
+    step_idx = 0
     running = True
+
+    # Pozycje węzłów na ekranie
+    pos = {'X1': (550, 250), 'X2': (350, 500), 'X3': (750, 500)}
+
     while running:
-        screen.fill(COLORS['BG'])
-        mouse_pos = pygame.mouse.get_pos()
+        screen.fill(C['BG'])
+        m_pos = pygame.mouse.get_pos()
+        click = False
 
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                running = False
+        for e in pygame.event.get():
+            if e.type == pygame.QUIT: running = False
+            if e.type == pygame.MOUSEBUTTONDOWN: click = True
 
-            # Obsługa kliknięcia myszką
-            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                if mode == "CSP" and btn_rect.collidepoint(mouse_pos):
-                    if step_csp < len(csp_steps) - 1:
-                        step_csp += 1
-                    else:
-                        # Jeśli wyczerpaliśmy kroki CSP, płynnie przechodzimy do ZAD 2
-                        mode = "RULES"
-                        last_update = time.time()
+        # Nagłówek i Instrukcja
+        screen.blit(f_b.render("Zadanie 1: Analiza dopuszczalnych wartości (MRV)", True, C['TXT']), (50, 40))
+        screen.blit(
+            f_s.render("Poniżej widać dostępne kolory dla każdej zmiennej w danym stanie.", True, (160, 160, 160)),
+            (50, 75))
 
-        # --- LOGIKA TIMERA ANIMACJI (TYLKO DLA REGUŁ) ---
-        now = time.time()
-        if mode == "RULES":
-            if now - last_update > 2.0:
-                if step_rules < len(parsed_rules):
-                    step_rules += 1
-                last_update = now
+        # Przyciski sterowania
+        btn_next = pygame.Rect(450, 680, 200, 40)
+        pygame.draw.rect(screen, C['BTN'], btn_next, border_radius=5)
+        screen.blit(f_s.render(f"Krok: {step_idx} / {len(csp_steps) - 1}", True, C['TXT']),
+                    (btn_next.x + 50, btn_next.y + 10))
 
-        # --- RYSOWANIE GRAFU CSP ---
-        pygame.draw.line(screen, (100, 100, 100), (550, 50), (550, 600), 1)
-        title_csp = f_bold.render("1. Wizualizacja CSP", True, COLORS['TXT'])
-        screen.blit(title_csp, (50, 30))
+        if click and btn_next.collidepoint(m_pos) and step_idx < len(csp_steps) - 1:
+            step_idx += 1
 
-        # Krawędzie
-        for start, end in [('X1', 'X2'), ('X1', 'X3'), ('X2', 'X3')]:
-            pygame.draw.line(screen, (150, 150, 150), nodes[start], nodes[end], 3)
+        # Rysowanie krawędzi grafu
+        for s, e in [('X1', 'X2'), ('X1', 'X3'), ('X2', 'X3')]:
+            pygame.draw.line(screen, (100, 100, 100), pos[s], pos[e], 2)
 
-        # Węzły
-        current_csp = csp_steps[min(step_csp, len(csp_steps) - 1)]
-        for name, pos in nodes.items():
-            val = current_csp.get(name)
-            col = COLORS.get(val, (80, 80, 80))
-            pygame.draw.circle(screen, col, pos, 45)
-            pygame.draw.circle(screen, (200, 200, 200), pos, 45, 3)
+        current_assignment = csp_steps[step_idx]
 
-            label = f_bold.render(name, True, (255, 255, 255))
-            screen.blit(label, (pos[0] - 15, pos[1] - 15))
-            if val:
-                val_txt = f_small.render(f"Value: {val}", True, (255, 255, 255))
-                screen.blit(val_txt, (pos[0] - 30, pos[1] + 50))
+        # Rysowanie węzłów i informacji o kolorach
+        for var_name, p in pos.items():
+            assigned_val = current_assignment.get(var_name)
 
-        # --- RYSOWANIE PRZYCISKU (TYLKO DLA CSP) ---
-        if mode == "CSP":
-            # Zmiana koloru po najechaniu myszką
-            current_btn_color = BTN_HOVER if btn_rect.collidepoint(mouse_pos) else BTN_COLOR
-            pygame.draw.rect(screen, current_btn_color, btn_rect, border_radius=8)
-            pygame.draw.rect(screen, (200, 200, 200), btn_rect, width=2, border_radius=8)
+            # 1. Wyliczamy dopuszczalne wartości dla tego konkretnego stanu
+            legal = get_legal_values(var_name, current_assignment, full_domains, constraints)
 
-            btn_txt = "Następny krok" if step_csp < len(csp_steps) - 1 else "Zakończ CSP"
-            btn_label = f_small.render(btn_txt, True, (255, 255, 255))
-            screen.blit(btn_label, (btn_rect.x + 25, btn_rect.y + 10))
+            # Rysowanie kółka węzła
+            node_color = C.get(assigned_val, C['GRAY'])
+            pygame.draw.circle(screen, node_color, p, 45)
+            pygame.draw.circle(screen, (200, 200, 200), p, 45, 3)  # Obwódka
 
-            info_txt = f_small.render(f"Krok: {step_csp}/{len(csp_steps) - 1}", True, (150, 150, 150))
-            screen.blit(info_txt, (btn_rect.x + 40, btn_rect.y + 55))
+            # Nazwa zmiennej
+            name_lbl = f_b.render(var_name, True, (255, 255, 255))
+            screen.blit(name_lbl, (p[0] - 12, p[1] - 12))
 
-        # --- RYSOWANIE REGUŁ ---
-        title_rules = f_bold.render("2. Pokrywanie Sekwencyjne", True, COLORS['TXT'])
-        screen.blit(title_rules, (600, 30))
+            # 2. Wyświetlanie informacji o dziedzinie obok węzła
+            info_x = p[0] + 55 if var_name != 'X3' else p[0] - 160
+            info_y = p[1] - 30
 
-        for i in range(step_rules):
-            r = parsed_rules[i]
-            y_pos = 100 + (i * 60)
+            # Status przypisania
+            status_txt = f"Wartość: {assigned_val if assigned_val else 'Brak'}"
+            screen.blit(f_s.render(status_txt, True, C['HL'] if assigned_val else C['TXT']), (info_x, info_y))
 
-            pygame.draw.rect(screen, (50, 50, 70), (580, y_pos, 480, 50), border_radius=5)
-            r_label = f_small.render(f"Base {r['id']}: {r['text']}", True,
-                                     (100, 255, 100) if "tak" in r['text'] else (255, 100, 100))
-            screen.blit(r_label, (595, y_pos + 12))
+            # Dostępne kolory (legalne)
+            legal_txt = "Dostępne: " + (", ".join(legal) if legal else "KONFLIKT!")
+            screen.blit(f_s.render(legal_txt, True, (100, 255, 100) if legal else (255, 100, 100)),
+                        (info_x, info_y + 25))
 
-        status_txt = "Oczekuję na kliknięcie..." if mode == "CSP" else (
-            "Animacja reguł..." if step_rules < len(parsed_rules) else "Zakończono wizualizację.")
-        status_render = f_small.render(status_txt, True, (180, 180, 180))
-        screen.blit(status_render, (450, 610))
-
+            # Pełna dziedzina (dla porównania)
+            domain_txt = f"Dziedzina: {full_domains[var_name]}"
+            screen.blit(f_xs.render(domain_txt, True, (130, 130, 130)), (info_x, info_y + 45))
         pygame.display.flip()
-        clock.tick(60)
-
     pygame.quit()
 
 
+# ==================================================================================
+# ZADANIE 2: ZBIORY PRZYBLIŻONE (Rough Sets)
+# ==================================================================================
+
+import pygame
+
+
+# --- LOGIKA ZADANIA 2 ---
+def calculate_rough_sets(data, attributes_indices, target_set_ids):
+    """Oblicza klasy nierozróżnialności oraz przybliżenia dolne i górne."""
+    classes = {}
+    for row in data:
+        obj_id = row[0]
+        # Tworzymy krotkę cech, które decydują o podobieństwie
+        attr_values = tuple(row[i] for i in attributes_indices)
+        if attr_values not in classes: classes[attr_values] = []
+        classes[attr_values].append(obj_id)
+
+    target_set = set(target_set_ids)
+    class_list = [sorted(objs) for objs in classes.values()]
+
+    # Przybliżenie dolne: klasy, które w całości zawierają się w zbiorze docelowym
+    lower = [c for c in class_list if set(c).issubset(target_set)]
+    # Przybliżenie górne: klasy, które mają choć jeden element wspólny ze zbiorem docelowym
+    upper = [c for c in class_list if not set(c).isdisjoint(target_set)]
+
+    return {
+        "classes": class_list,
+        "lower": [obj for sub in lower for obj in sub],
+        "upper": [obj for sub in upper for obj in sub],
+        "target": target_set_ids
+    }
+
+
+def solve_rough_sets_logic():
+    # Dane z tabeli Fig. 1 (o1 - o9)
+    data = [
+        ("o1", "wysoka", "bliski", "średni", "tak"), ("o2", "wysoka", "bliski", "średni", "tak"),
+        ("o3", "wysoka", "bliski", "średni", "tak"), ("o4", "więcej niż średnia", "daleki", "silny", "nie pewne"),
+        ("o5", "więcej niż średnia", "daleki", "silny", "nie"), ("o6", "więcej niż średnia", "daleki", "lekki", "nie"),
+        ("o7", "wysoka", "bliski", "średni", "tak"), ("o8", "więcej niż średnia", "daleki", "lekki", "nie"),
+        ("o9", "więcej niż średnia", "daleki", "lekki", "tak")
+    ]
+    # Definicje zbiorów z polecenia (5)
+    X1 = ["o1", "o2", "o3", "o7", "o9"]
+    X2 = ["o5", "o6", "o8"]
+
+    return [
+        {"title": "(i) Zbiór X2 dla A={a1,a2,a3}", "res": calculate_rough_sets(data, [1, 2, 3], X2)},
+        {"title": "(ii) Zbiór X1 dla B={a1,a2}", "res": calculate_rough_sets(data, [1, 2], X1)},
+        {"title": "(ii) Zbiór X2 dla B={a1,a2}", "res": calculate_rough_sets(data, [1, 2], X2)}
+    ]
+
+
+# --- WIZUALIZACJA ZADANIA 2 ---
+def run_ui_zadanie_2(rs_results):
+    pygame.init()
+    screen = pygame.display.set_mode((1100, 750))
+    pygame.display.set_caption("ZADANIE 2 - Wizualizacja Przybliżeń")
+
+    C = {
+        'BG': (25, 25, 25),
+        'TXT': (230, 230, 230),
+        'BTN': (60, 100, 150),
+        'TARGET': (255, 215, 0),  # Złoty (obiekt docelowy)
+        'LOWER': (40, 100, 40),  # Ciemnozielony (pewność)
+        'UPPER_BRD': (100, 150, 255),  # Jasnoniebieski (możliwość)
+        'OBJ_OUT': (100, 100, 100)  # Szary (poza zbiorem)
+    }
+
+    f_xs = pygame.font.SysFont("Arial", 14)
+    f_s = pygame.font.SysFont("Arial", 16)
+    f_b = pygame.font.SysFont("Arial", 22, bold=True)
+
+    step_idx = 0
+    running = True
+
+    while running:
+        screen.fill(C['BG'])
+        m_pos = pygame.mouse.get_pos()
+        click = False
+
+        for e in pygame.event.get():
+            if e.type == pygame.QUIT: running = False
+            if e.type == pygame.MOUSEBUTTONDOWN: click = True
+
+        # Sterowanie etapami (0-8, bo 3 podpunkty po 3 fazy)
+        btn_next = pygame.Rect(450, 680, 200, 40)
+        pygame.draw.rect(screen, C['BTN'], btn_next, border_radius=5)
+        screen.blit(f_s.render(f"Następny Etap ({step_idx}/8)", True, C['TXT']), (btn_next.x + 40, btn_next.y + 10))
+
+        if click and btn_next.collidepoint(m_pos) and step_idx < 8:
+            step_idx += 1
+
+        sub_problem = step_idx // 3  # który z 3 podpunktów
+        phase = step_idx % 3  # 0: klasy, 1: dolne, 2: górne
+
+        data_res = rs_results[sub_problem]
+        screen.blit(f_b.render(data_res['title'], True, (255, 180, 50)), (50, 40))
+
+        # Opis aktualnej fazy
+        faza_txt = ["Faza: Podział na klasy nierozróżnialności",
+                    "Faza: Wyznaczanie Przybliżenia Dolnego (Pewniaki)",
+                    "Faza: Wyznaczanie Przybliżenia Górnego (Możliwości)"][phase]
+        screen.blit(f_s.render(faza_txt, True, (180, 180, 180)), (50, 75))
+
+        # Rysowanie kafelków (Klas)
+        for idx, cl in enumerate(data_res['res']['classes']):
+            # Rozmieszczenie siatki kafelków
+            x_box = 70 + (idx % 3) * 330
+            y_box = 120 + (idx // 3) * 180
+            box_rect = pygame.Rect(x_box, y_box, 300, 150)
+
+            # Logika kolorowania "pudełek"
+            in_lower = set(cl).issubset(set(data_res['res']['target'])) and phase >= 1
+            in_upper = not set(cl).isdisjoint(set(data_res['res']['target'])) and phase >= 2
+
+            # Tło zielone dla dolnego przybliżenia
+            if in_lower:
+                pygame.draw.rect(screen, C['LOWER'], box_rect, border_radius=10)
+
+            # Obramowanie niebieskie dla górnego przybliżenia
+            border_col = C['UPPER_BRD'] if in_upper else (80, 80, 80)
+            pygame.draw.rect(screen, border_col, box_rect, width=3, border_radius=10)
+
+            screen.blit(f_xs.render(f"Klasa {idx + 1}", True, (150, 150, 150)), (x_box + 10, y_box + 10))
+
+            # Rysowanie obiektów (kółek) wewnątrz klasy
+            for o_idx, obj_name in enumerate(cl):
+                o_x = x_box + 45 + (o_idx * 55)
+                o_y = y_box + 75
+
+                is_target = obj_name in data_res['res']['target']
+
+                # Złoty kolor dla obiektów, które nas interesują
+                obj_col = C['TARGET'] if is_target else C['OBJ_OUT']
+                pygame.draw.circle(screen, obj_col, (o_x, o_y), 20)
+
+                # Tekst z nazwą obiektu
+                txt_col = (0, 0, 0) if is_target else (220, 220, 220)
+                name_lbl = f_xs.render(obj_name, True, txt_col)
+                screen.blit(name_lbl, (o_x - 8, o_y - 8))
+
+        # Mała legenda na dole
+        pygame.draw.circle(screen, C['TARGET'], (50, 650), 8)
+        screen.blit(f_xs.render("= Element zbioru docelowego X", True, C['TXT']), (65, 642))
+        pygame.draw.rect(screen, C['LOWER'], (50, 670, 15, 15))
+        screen.blit(f_xs.render("= Przybliżenie Dolne", True, C['TXT']), (75, 670))
+        pygame.draw.rect(screen, C['UPPER_BRD'], (50, 700, 15, 15), width=2)
+        screen.blit(f_xs.render("= Przybliżenie Górne", True, C['TXT']), (75, 700))
+
+        pygame.display.flip()
+    pygame.quit()
+
+
+# ==================================================================================
+# ZADANIE 3: POKRYWANIE SEKWENCYJNE (Sequential Covering)
+# ==================================================================================
+def solve_sequential_covering_logic():
+    """
+    Znajduje reguły metodą pokrywania sekwencyjnego i zapisuje pełną historię
+    kroków (co ułatwia wizualizację wykreślania wierszy z tabeli).
+    """
+    data = [
+        ("o1", "wysoka", "bliski", "średni", "tak"),
+        ("o2", "wysoka", "daleki", "średni", "tak"),
+        ("o3", "więcej niż średnia", "daleki", "silny", "nie"),
+        ("o4", "wysoka", "daleki", "silny", "nie"),
+        ("o5", "więcej niż średnia", "bliski", "lekki", "tak"),
+        ("o6", "więcej niż średnia", "daleki", "lekki", "tak"),
+        ("o7", "więcej niż średnia", "bliski", "silny", "nie pewne"),
+        ("o8", "wysoka", "bliski", "silny", "nie pewne"),
+        ("o9", "wysoka", "bliski", "średni", "tak")
+    ]
+    attrs = ["a1", "a2", "a3"]
+    covered = set()
+    steps = []
+
+    # 1. Szukamy reguł o długości k (od 1 do 3 atrybutów)
+    for k in range(1, 4):
+        for obj in data:
+            if obj[0] in covered:
+                continue
+
+            # 2. Generujemy kombinacje atrybutów dla danego obiektu
+            for comb in combinations(range(1, 4), k):
+                # 3. Sprawdzamy niesprzeczność (czy wszystkie pasujące mają tę samą decyzję)
+                is_consistent = True
+                target_dec = obj[-1]
+                for r in data:
+                    match = all(r[i] == obj[i] for i in comb)
+                    if match and r[-1] != target_dec:
+                        is_consistent = False
+                        break
+
+                # 4. Jeśli reguła jest niesprzeczna, zapisujemy ją i pokryte obiekty
+                if is_consistent:
+                    rule_cond = " AND ".join([f"{attrs[i - 1]}='{obj[i]}'" for i in comb])
+                    rule_text = f"IF {rule_cond} THEN {target_dec}"
+
+                    newly_covered = []
+                    for r in data:
+                        if all(r[i] == obj[i] for i in comb) and r[-1] == target_dec and r[0] not in covered:
+                            newly_covered.append(r[0])
+                            covered.add(r[0])
+
+                    steps.append({
+                        'base_obj': obj[0],
+                        'rule_text': rule_text,
+                        'newly_covered': newly_covered,
+                        'all_covered': list(covered),
+                        'decision': target_dec
+                    })
+                    break  # Przechodzimy do następnego niepokrytego obiektu
+
+        if len(covered) == len(data):
+            break
+
+    return data, steps
+
+
+# --- WIZUALIZACJA ZADANIA 3 ---
+def run_ui_zadanie_3(sc_data):
+    raw_data, steps = sc_data
+
+    pygame.init()
+    screen = pygame.display.set_mode((1150, 750))
+    pygame.display.set_caption("ZADANIE 3 - Odkrywanie Reguł (Wizualizacja Tabeli)")
+
+    C = {
+        'BG': (25, 25, 25),
+        'TXT': (230, 230, 230),
+        'BTN': (60, 100, 150),
+        'DIM': (80, 80, 80),  # Wyszarzenie dla obiektów już pokrytych
+        'HIGHLIGHT_TAK': (40, 120, 60),  # Zielony dla pozytywnych decyzji
+        'HIGHLIGHT_NIE': (150, 50, 50),  # Czerwony dla negatywnych decyzji
+        'TABLE_BG': (35, 35, 45)
+    }
+
+    f_s = pygame.font.SysFont("Arial", 14)
+    f_m = pygame.font.SysFont("Arial", 16)
+    f_b = pygame.font.SysFont("Arial", 22, bold=True)
+    f_tbl = pygame.font.SysFont("Consolas", 15)  # Monospace dla czytelności tabeli
+
+    step_idx = 0
+    running = True
+
+    # Kolumny tabeli (X pozycje)
+    col_x = [40, 100, 300, 420, 540]
+    headers = ["ID", "a1", "a2", "a3", "dec"]
+
+    while running:
+        screen.fill(C['BG'])
+        m_pos = pygame.mouse.get_pos()
+        click = False
+
+        for e in pygame.event.get():
+            if e.type == pygame.QUIT: running = False
+            if e.type == pygame.MOUSEBUTTONDOWN: click = True
+
+        screen.blit(f_b.render("Zadanie 3: Sekwencyjne Pokrywanie Obiektów", True, (255, 180, 50)), (40, 30))
+        screen.blit(f_s.render("Tabela pokazuje, które obiekty są eliminowane przez nowo odkryte reguły.", True,
+                               (170, 170, 170)), (40, 60))
+
+        # --- Przycisk "Następny krok" ---
+        btn_next = pygame.Rect(450, 680, 250, 40)
+        pygame.draw.rect(screen, C['BTN'], btn_next, border_radius=5)
+
+        if step_idx < len(steps):
+            btn_txt = f"Odkryj regułę {step_idx + 1}/{len(steps)}"
+        else:
+            btn_txt = "Wszystkie obiekty pokryte!"
+
+        screen.blit(f_m.render(btn_txt, True, C['TXT']), (btn_next.x + 30, btn_next.y + 10))
+
+        if click and btn_next.collidepoint(m_pos) and step_idx < len(steps):
+            step_idx += 1
+
+        # Pobieranie stanu na dany krok
+        current_step = steps[step_idx - 1] if step_idx > 0 else None
+        previously_covered = steps[step_idx - 2]['all_covered'] if step_idx > 1 else []
+        newly_covered = current_step['newly_covered'] if current_step else []
+
+        # --- Rysowanie Tabeli Danych (Lewa strona) ---
+        tbl_y_start = 120
+        # Nagłówki
+        pygame.draw.rect(screen, (50, 50, 70), (30, tbl_y_start, 580, 30), border_radius=4)
+        for i, h in enumerate(headers):
+            screen.blit(f_b.render(h, True, (255, 255, 255)), (col_x[i], tbl_y_start + 3))
+
+        # Wiersze
+        for i, row in enumerate(raw_data):
+            obj_id = row[0]
+            y = tbl_y_start + 40 + (i * 35)
+
+            # Logika kolorowania wiersza
+            row_bg = C['TABLE_BG']
+            txt_col = C['TXT']
+
+            if obj_id in previously_covered:
+                row_bg = C['BG']
+                txt_col = C['DIM']  # Wyszarzamy, bo już załatwione w poprzednich krokach
+            elif obj_id in newly_covered:
+                # Wyróżniamy obiekty pokryte w TYM konkretnym kroku
+                row_bg = C['HIGHLIGHT_TAK'] if current_step['decision'] == 'tak' else C['HIGHLIGHT_NIE']
+                txt_col = (255, 255, 255)
+
+            pygame.draw.rect(screen, row_bg, (30, y, 580, 30), border_radius=4)
+            if obj_id in newly_covered:
+                pygame.draw.rect(screen, (255, 255, 255), (30, y, 580, 30), width=1, border_radius=4)
+
+            # Rysowanie komórek
+            for j, val in enumerate(row):
+                screen.blit(f_tbl.render(str(val), True, txt_col), (col_x[j], y + 6))
+
+        # --- Rysowanie Wygenerowanych Reguł (Prawa strona) ---
+        rule_start_x = 650
+        screen.blit(f_b.render("Wygenerowane Reguły:", True, C['TXT']), (rule_start_x, 120))
+
+        for i in range(step_idx):
+            step = steps[i]
+            ry = 160 + (i * 60)
+
+            # Pudełko dla reguły
+            is_active = (i == step_idx - 1)  # Podświetl najnowszą
+            bg_col = (60, 65, 80) if is_active else (40, 45, 60)
+            pygame.draw.rect(screen, bg_col, (rule_start_x, ry, 460, 50), border_radius=5)
+            if is_active:
+                pygame.draw.rect(screen, (200, 200, 200), (rule_start_x, ry, 460, 50), width=2, border_radius=5)
+
+            # Tekst reguły
+            dec_color = (150, 255, 150) if step['decision'] == 'tak' else (255, 150, 150)
+            screen.blit(f_m.render(f"Baza {step['base_obj']}: {step['rule_text']}", True, dec_color),
+                        (rule_start_x + 10, ry + 8))
+
+            # Informacja o pokryciu
+            cov_txt = f"Pokrywa obiekty: {', '.join(step['newly_covered'])}"
+            screen.blit(f_s.render(cov_txt, True, (180, 180, 180)), (rule_start_x + 10, ry + 28))
+
+        pygame.display.flip()
+    pygame.quit()
+# ==================================================================================
+# PANEL GŁÓWNY (WYBÓR MODUŁU DO URUCHOMIENIA)
+# ==================================================================================
 if __name__ == "__main__":
-    print("\n[INFO] Zamykanie konsoli... Uruchamiam interaktywne okno Pygame.")
-    start_animated_visualization(solution, generated_rules)
+    print("\n--- SYSTEMY DECYZYJNE - MENU ---")
+    print("Obliczanie logiki w tle...")
+
+    # Wywołanie funkcji logicznych niezależnie od renderowania
+    dane_zad_1 = solve_csp_logic()
+    dane_zad_2 = solve_rough_sets_logic()
+    dane_zad_3 = solve_sequential_covering_logic()
+
+    while True:
+        print("\nKtóre zadanie chcesz zwizualizować?")
+        print("1. Zadanie 1: CSP")
+        print("2. Zadanie 2: Zbiory Przybliżone")
+        print("3. Zadanie 3: Reguły Sekwencyjne")
+        print("0. Wyjście")
+
+        wybor = input("Twój wybór: ")
+
+        if wybor == '1':
+            run_ui_zadanie_1(dane_zad_1)
+        elif wybor == '2':
+            run_ui_zadanie_2(dane_zad_2)
+        elif wybor == '3':
+            run_ui_zadanie_3(dane_zad_3)
+        elif wybor == '0':
+            print("Koniec programu.")
+            break
+        else:
+            print("Nieprawidłowy wybór, spróbuj ponownie.")
