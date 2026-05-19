@@ -10,6 +10,10 @@ def resolve(clause1, clause2):
                 resolvents.append(new_clause)
     return resolvents
 
+# A(x): x jest zwierzęciem.
+# L(x, y): x kocha y.
+# K(x, y): x zabija y.
+
 zdania_fol = [
     "∀x ((∀y (A(y) ⇒ L(x, y))) ⇒ ∃z L(z, x))", # 1. Każdy, kto kocha wszystkie zwierzęta, jest kochany
     "∀x (∃y (A(y) ∧ K(x, y)) ⇒ ∀z ¬L(z, x))", # 2. Nikt nie kocha tego, kto zabija zwierzę
@@ -22,9 +26,9 @@ zdania_fol = [
 
 # Przykład konwersji Zdania 1 na postać CNF:
 # Wejście: ∀x ((∀y (A(y) ⇒ L(x, y))) ⇒ ∃z L(z, x))
-# 1. Eliminacja ⇒ : ∀x (¬(∀y (¬A(y) ∨ L(x, y))) ∨ ∃z L(z, x))
-# 2. De Morgan    : ∀x (∃y (A(y) ∧ ¬L(x, y)) ∨ ∃z L(z, x))
-# 3. Skolemizacja : ∀x ((A(F(x)) ∧ ¬L(x, F(x))) ∨ L(G(x), x))  # y -> F(x), z -> G(x)
+# 1. Eliminacja ⇒ : ∀x (¬(∀y (¬A(y) ∨ L(x, y))) ∨ ∃z L(z, x)) - proces zamiany implikacji ⇒ na alternatywę ∨
+# 2. De Morgan    : ∀x (∃y (A(y) ∧ ¬L(x, y)) ∨ ∃z L(z, x)) - (x ∧ y) -> (¬x V ¬y), (x V y) -> (¬x ∧ ¬y)
+# 3. Skolemizacja : ∀x ((A(F(x)) ∧ ¬L(x, F(x))) ∨ L(G(x), x)) - y -> F(x), z -> G(x) Skolem
 # 4. Rozdzielność : (A(F(x)) ∨ L(G(x), x)) ∧ (¬L(x, F(x)) ∨ L(G(x), x))
 # Wynik to dwie odrębne klauzule (K1 i K2).
 
@@ -42,19 +46,19 @@ klauzule_cnf = {
 
 # Wykonanie dowodu metodą rezolucji
 r1 = resolve(klauzule_cnf["K5"], klauzule_cnf["K7"])[0]
-print(f"R1: {r1}") # Wynik: ['K(Jack, Tuna)']
+print(f"R1: {r1}") 
 
 r2 = resolve(klauzule_cnf["K3"], r1)[0]
-print(f"R2: {r2}") # Wynik: ['¬L(G(Jack), Jack)', '¬A(Tuna)']
+print(f"R2: {r2}") 
 
 r3 = resolve(r2, klauzule_cnf["K6"])[0]
-print(f"R3: {r3}") # Wynik: ['¬L(G(Jack), Jack)']
+print(f"R3: {r3}") 
 
 r4 = resolve(klauzule_cnf["K4"], klauzule_cnf["K2"])[0]
-print(f"R4: {r4}") # Wynik: ['L(G(Jack), Jack)', '¬A(F(Jack))']
+print(f"R4: {r4}") 
 
 r5 = resolve(r4, klauzule_cnf["K1"])[0]
-print(f"R5: {r5}") # Wynik: ['L(G(Jack), Jack)']
+print(f"R5: {r5}") 
 
 r6 = resolve(r3, r5)[0]
 print(f"R6 (Pusta klauzula): {r6}") # Wynik: [] -> Udowodniono sprzeczność
